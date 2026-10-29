@@ -15,8 +15,8 @@
 #                             works once the source folder is gone
 #   /opt/echo-ai/.venv        Python venv, kept across updates
 #
-# Each user's own data (just the log) lives separately, in
-# ~/.local/state/echo-ai/, not under /opt.
+# Each user's own data (the log, and their own actions in ~/.config/echo-ai/)
+# lives separately, in their home folder, not under /opt.
 #
 # Unlike the web-app deskapps there's no server or port: echo-ai is a
 # background process that echo-ai --show talks to over a Unix socket.
@@ -88,7 +88,7 @@ uninstall() {
         info "Nothing to remove - $COMMAND_NAME is not installed."
         exit 0
     fi
-    warn "Your echo-ai log is never touched by this uninstall (it lives in ~/.local/state/echo-ai/, not under $INSTALL_DIR)."
+    warn "Your echo-ai log and your own actions are never touched by this uninstall (they live in ~/.local/state/echo-ai/ and ~/.config/echo-ai/, not under $INSTALL_DIR)."
     warn "If you start echo-ai at login or bound a key to it, remove that yourself."
     if ! confirm "Remove $COMMAND_NAME completely?"; then
         error "Aborted."
@@ -149,7 +149,7 @@ install_to_opt() {
     if [ -d "$INSTALL_DIR" ]; then
         # Replace the app files but keep .venv, so already-installed
         # Python packages are reused (see install_deps).
-        info "Updating existing install at $INSTALL_DIR (needs sudo; your $COMMAND_NAME log lives in ~/.local/state/echo-ai/, never under $INSTALL_DIR)"
+        info "Updating existing install at $INSTALL_DIR (needs sudo; your log and your own actions live in your home folder, never under $INSTALL_DIR)"
         sudo find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 ! -name .venv -exec rm -rf {} +
     else
         info "Installing to $INSTALL_DIR (needs sudo, since it's a system directory shared by all users)"

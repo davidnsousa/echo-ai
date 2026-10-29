@@ -374,6 +374,31 @@ PRESETS = {
     "Translate to English": "Translate this to English. Reply with only the translation.",
     "Reply": "Draft a short, friendly reply to this message.",
 }
+# Your own actions, added with "+" in the popup: [{"name": ..., "prompt": ...}, ...]
+CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                          "echo-ai")
+CUSTOM_PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
+
+
+def load_custom_presets():
+    """[(name, prompt), ...] from CUSTOM_PRESETS_FILE; [] if missing or unreadable."""
+    import json
+
+    try:
+        with open(CUSTOM_PRESETS_FILE) as f:
+            return [(p["name"], p["prompt"]) for p in json.load(f) if p["name"] and p["prompt"]]
+    except (OSError, ValueError, TypeError, KeyError):
+        return []
+
+
+def save_custom_presets(presets):
+    import json
+
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    tmp = CUSTOM_PRESETS_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump([{"name": n, "prompt": p} for n, p in presets], f, indent=2, ensure_ascii=False)
+    os.replace(tmp, CUSTOM_PRESETS_FILE)
 FORMATTING = ("Be concise. Use Markdown when it helps (lists, tables, fenced code blocks with "
               "a language tag).")
 IDENTITY = (f"You are {ASSISTANT_NAME}, a desktop assistant powered by Claude (made by "
@@ -470,6 +495,7 @@ GTK_CSS = b"""
 .card { background-color: @theme_base_color; border: 1px solid @borders; border-radius: 10px; }
 .mono { font-family: "JetBrainsMonoNL Nerd Font", monospace; }
 button.chip { font-weight: normal; padding: 4px 12px; }
+button.chip-x { padding: 4px 8px; }
 .status-busy { color: @theme_selected_bg_color; }
 .status-ok { color: #57e389; }
 levelbar trough { min-height: 6px; min-width: 110px; }
@@ -501,7 +527,7 @@ def show_window(text, files=()):
     claude = find_claude()
     render_md, code_css = markdown_renderer()
     state = {"proc": None, "answer": "", "done": False, "paste": False, "files": list(files),
-             "render_pending": False, "last": None}
+             "render_pending": False, "last": None, "custom": load_custom_presets()}
 
     css = Gtk.CssProvider()
     css.load_from_data(GTK_CSS)
@@ -523,8 +549,8 @@ def show_window(text, files=()):
             lbl.get_style_context().add_class(c)
         return lbl
 
-    def button(text_, on_click, *classes, hint=None):
-        btn = Gtk.Button(label=text_)
+    def button(text_, on_click, *classes, hint=None, **kw):
+        btn = Gtk.Button(label=text_, **kw)
         if hint:  # the hotkey, dimmed after the label
             box = Gtk.Box(spacing=6, halign=Gtk.Align.CENTER)
             box.pack_start(Gtk.Label(label=text_), False, False, 0)
@@ -576,13 +602,81 @@ def show_window(text, files=()):
 
     # --- Ask ---------------------------------------------------------------
     header(f"Ask {ASSISTANT_NAME}", top=8 if has_selection else 0)
+    presets = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, column_spacing=6,
+                          row_spacing=6, homogeneous=False, max_children_per_line=10)
     if has_selection:
-        presets = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, column_spacing=6,
-                              row_spacing=6, homogeneous=False, max_children_per_line=10)
-        for n, (name, instruction) in enumerate(PRESETS.items(), 1):
-            presets.add(button(name, lambda i=instruction: ask(i), "chip",
-                               hint=f"Alt+{n}" if n <= 9 else None))
         page.pack_start(presets, False, False, 0)
+
+    def all_presets():
+        return list(PRESETS.items()) + state["custom"]
+
+    def render_presets():
+        for child in presets.get_children():
+            child.destroy()
+        for n, (name, instruction) in enumerate(all_presets(), 1):
+            chip = button(name, lambda i=instruction: ask(i), "chip",
+                          hint=f"Alt+{n}" if n <= 9 else None)
+            chip.set_tooltip_text(instruction)
+            if n > len(PRESETS):  # one of yours: a ✕ joined on to remove it
+                pair = Gtk.Box()
+                pair.get_style_context().add_class("linked")
+                remove = button("✕", lambda p=(name, instruction): remove_preset(p),
+                                "chip", "chip-x")
+                remove.set_tooltip_text(f"Remove “{name}”")
+                pair.pack_start(chip, False, False, 0)
+                pair.pack_start(remove, False, False, 0)
+                chip = pair
+            presets.add(chip)
+        add = button("+", lambda: add_preset(), "chip", halign=Gtk.Align.START)
+        add.set_tooltip_text("Add your own action")
+        presets.add(add)
+        presets.show_all()
+
+    def add_preset():
+        dialog = Gtk.Dialog(title="New action", transient_for=win, modal=True)
+        dialog.set_keep_above(True)
+        dialog.set_default_size(460, -1)
+        dialog.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Add", Gtk.ResponseType.ACCEPT)
+        dialog.set_default_response(Gtk.ResponseType.ACCEPT)
+        dialog.set_response_sensitive(Gtk.ResponseType.ACCEPT, False)
+        box = dialog.get_content_area()
+        box.set_spacing(6)
+        box.set_border_width(12)
+        name = Gtk.Entry(placeholder_text="e.g. Make formal", activates_default=True)
+        prompt_view = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, left_margin=8,
+                                   right_margin=8, top_margin=6, bottom_margin=6)
+        prompt = prompt_view.get_buffer()
+        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        scroller.add(prompt_view)
+        box.pack_start(label("Name", "dim"), False, False, 0)
+        box.pack_start(name, False, False, 0)
+        box.pack_start(label("Instruction sent with the selected text, e.g. “Rewrite this "
+                             "in a formal tone.”", "dim", wrap=True), False, False, 0)
+        box.pack_start(card(scroller, 90), True, True, 0)
+
+        def values():
+            start, end = prompt.get_bounds()
+            return name.get_text().strip(), prompt.get_text(start, end, False).strip()
+
+        def on_changed(*_):
+            dialog.set_response_sensitive(Gtk.ResponseType.ACCEPT, all(values()))
+
+        name.connect("changed", on_changed)
+        prompt.connect("changed", on_changed)
+        dialog.show_all()
+        if dialog.run() == Gtk.ResponseType.ACCEPT and all(values()):
+            # Re-read first, so actions added from another popup meanwhile aren't lost.
+            state["custom"] = load_custom_presets() + [values()]
+            save_custom_presets(state["custom"])
+            render_presets()
+        dialog.destroy()
+        entry.grab_focus()
+
+    def remove_preset(preset):
+        state["custom"] = [p for p in load_custom_presets() if p != preset]
+        save_custom_presets(state["custom"])
+        render_presets()
+        entry.grab_focus()
 
     ask_row = Gtk.Box(spacing=8)
     ask_row.pack_start(button("+ Files", lambda: attach(), "chip", hint="Alt+F"), False, False, 0)
@@ -916,7 +1010,7 @@ def show_window(text, files=()):
         key = Gdk.keyval_to_lower(event.keyval)
         ctrl, alt = Gdk.ModifierType.CONTROL_MASK, Gdk.ModifierType.MOD1_MASK
         shift = Gdk.ModifierType.SHIFT_MASK
-        presets = list(PRESETS.values())
+        presets = [instruction for _, instruction in all_presets()]
         if key == Gdk.KEY_Escape and not mods:
             escape()
         elif mods == alt and has_selection and Gdk.KEY_1 <= key < Gdk.KEY_1 + min(len(presets), 9):
@@ -936,6 +1030,8 @@ def show_window(text, files=()):
     win.connect("key-press-event", on_key)
     win.connect("destroy", lambda _w: Gtk.main_quit())
     render_files()
+    if has_selection:
+        render_presets()
     with open(UI_HTML) as f:
         view.load_html(f.read(), "file:///")
     win.show_all()

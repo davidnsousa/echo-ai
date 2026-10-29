@@ -15,7 +15,8 @@ Claude Code into.
 
 - **Works in any app.** It reads the highlighted text (the X11 PRIMARY selection, or a Ctrl+C for
   apps such as OnlyOffice that don't set PRIMARY) and puts your clipboard back afterwards.
-- **One-click presets:** Explain, Summarize, Fix grammar, Simplify, Translate to English, Reply.
+- **One-click presets:** Explain, Summarize, Fix grammar, Simplify, Translate to English, Reply,
+  plus **your own actions**, added with **+** and removed with their ✕.
 - **Replace selection** pastes the answer back over the original text in the source app.
 - **Streaming Markdown replies** with syntax-highlighted code blocks, each with a Copy button.
 - **Files and images as context:** attach files, or let it pick up an image already on the
@@ -80,7 +81,7 @@ Inside the popup:
 | Key | Action |
 |---|---|
 | **Enter** | Ask the question typed in the box |
-| **Alt+1 … Alt+6** | Run a preset (when text is selected) |
+| **Alt+1 … Alt+9** | Run a preset or one of your actions, in the order shown (when text is selected) |
 | **Alt+F** | Attach files |
 | **Ctrl+Enter** | Replace selection with the answer |
 | **Ctrl+Shift+C** | Copy the answer (or the selection) and close |
@@ -89,7 +90,12 @@ Inside the popup:
 
 ### Customizing
 
-The presets, the assistant's name and the code-highlighting style are constants at the top of
+**Your own actions:** click **+** after the presets, give the action a name and the instruction
+to send with the selected text (e.g. "Rewrite this in a formal tone."), and it appears as a new
+chip with the next Alt+number. Its ✕ removes it. They're saved in
+`~/.config/echo-ai/presets.json`, so updates and uninstalls keep them.
+
+The built-in presets, the assistant's name and the code-highlighting style are constants at the top of
 `echo-ai.py` (`PRESETS`, `ASSISTANT_NAME`, `CODE_STYLE`). Edit them and run `./install.sh` again.
 
 Set `ECHO_AI_DEBUG=1` to print debug output about selection handling.
