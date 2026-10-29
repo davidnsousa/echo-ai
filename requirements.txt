@@ -1,0 +1,4 @@
+# GTK/WebKit (python-gobject, webkit2gtk-4.1) come from pacman; run.sh checks
+# those and the venv sees them via --system-site-packages.
+markdown-it-py
+pygments
