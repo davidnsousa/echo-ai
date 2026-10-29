@@ -2,6 +2,8 @@
 
 Ask Claude about whatever text you have highlighted, from any app, with one key.
 
+![echo-ai fixing the grammar of a highlighted paragraph in a text editor](docs/screenshot.png)
+
 Highlight text anywhere on your X11 desktop, press your shortcut (e.g. **Super+I**), and a small
 popup opens with the selection. Explain it, summarize it, fix its grammar, translate it, draft a
 reply, or ask your own question. Then copy the answer or paste it straight back over the
