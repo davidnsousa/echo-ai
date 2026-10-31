@@ -274,7 +274,8 @@ def focused_window():
 def paste_into(window, content):
     """Put content on the clipboard, focus window and press Ctrl+V there.
 
-    The app still has the text highlighted, so the paste replaces it.
+    If the app still has text highlighted, the paste replaces it; otherwise it lands at the
+    cursor.
     """
     import time
 
@@ -520,7 +521,7 @@ def show_window(text, files=()):
 
     source_window = focused_window()  # read before our window appears and takes focus
     debug(f"popup: source window {source_window:#x}")
-    # Nothing highlighted: no selection card, presets or Replace; just a plain assistant.
+    # Nothing highlighted: no selection card or presets, and Replace becomes a plain Paste.
     has_selection = bool(text.strip())
     if not has_selection:
         text = ""
@@ -846,9 +847,8 @@ def show_window(text, files=()):
     footer.pack_end(button("Close", lambda: close(), "flat"), False, False, 0)
     footer.pack_end(button("Copy & close", lambda: copy_and_close(), "flat", hint="Ctrl+⇧C"),
                     False, False, 0)
-    if has_selection:
-        footer.pack_end(button("Replace selection", lambda: replace(), "suggested-action",
-                               hint="Ctrl+↵"), False, False, 0)
+    footer.pack_end(button("Replace selection" if has_selection else "Paste", lambda: replace(),
+                           "suggested-action", hint="Ctrl+↵"), False, False, 0)
     page.pack_start(footer, False, False, 0)
 
     # --- Claude Code -------------------------------------------------------
@@ -1017,7 +1017,7 @@ def show_window(text, files=()):
             ask(presets[key - Gdk.KEY_1])
         elif mods == alt and key == Gdk.KEY_f:
             attach()
-        elif mods == ctrl and key in (Gdk.KEY_Return, Gdk.KEY_KP_Enter) and has_selection:
+        elif mods == ctrl and key in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             replace()
         elif mods == ctrl | shift and key == Gdk.KEY_c:
             copy_and_close()

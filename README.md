@@ -19,7 +19,8 @@ Claude Code into.
   apps such as OnlyOffice that don't set PRIMARY) and puts your clipboard back afterwards.
 - **One-click presets:** Explain, Summarize, Fix grammar, Simplify, Translate to English, Reply,
   plus **your own actions**, added with **+** and removed with their ✕.
-- **Replace selection** pastes the answer back over the original text in the source app.
+- **Replace selection** pastes the answer back over the original text in the source app. With
+  nothing highlighted, **Paste** inserts it at the cursor instead.
 - **Streaming Markdown replies** with syntax-highlighted code blocks, each with a Copy button.
 - **Files and images as context:** attach files, or let it pick up an image already on the
   clipboard.
@@ -85,7 +86,7 @@ Inside the popup:
 | **Enter** | Ask the question typed in the box |
 | **Alt+1 … Alt+9** | Run a preset or one of your actions, in the order shown (when text is selected) |
 | **Alt+F** | Attach files |
-| **Ctrl+Enter** | Replace selection with the answer |
+| **Ctrl+Enter** | Replace selection with the answer (or paste it at the cursor) |
 | **Ctrl+Shift+C** | Copy the answer (or the selection) and close |
 | **Ctrl+R** | Run the last question again |
 | **Esc** | Stop a reply that's still coming in; press again to close |
